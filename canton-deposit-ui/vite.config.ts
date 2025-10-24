@@ -5,7 +5,6 @@ import react from '@vitejs/plugin-react-swc';
 export default defineConfig({
   plugins: [react()],
   build: {
-    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       // Suppress noisy warnings emitted by Rollup for "use client" markers
       onwarn(warning, defaultHandler) {
@@ -14,6 +13,13 @@ export default defineConfig({
           /Module level directives cause errors when bundled/.test(warning.message)
         ) {
           return; // ignore "use client" and similar module-level directive warnings
+        }
+        // Suppress /*#__PURE__*/ comment warnings from third-party libraries
+        if (
+          warning.code === 'SOURCEMAP_ERROR' ||
+          (warning.code === 'INVALID_ANNOTATION' && warning.message?.includes('PURE'))
+        ) {
+          return;
         }
         defaultHandler(warning);
       },

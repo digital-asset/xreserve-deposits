@@ -21,6 +21,8 @@
     "react-router-dom": "^6.15.0"
   },
   "dependencies": {
+    "@reown/appkit": "^1.8.11",
+    "@reown/appkit-adapter-ethers": "^1.8.11",
     "@types/node": "^20.9.0",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
