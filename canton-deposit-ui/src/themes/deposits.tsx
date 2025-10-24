@@ -9,7 +9,6 @@ const style = {
 };
 
 const deposits: Branding = {
-  loginLogo: <img alt="" src={cantonHeader} height="32px" style={style} />,
   headerLogo: <img alt="" src={cantonHeader} height="16px" style={style} />,
   theme: 'deposits'
 };

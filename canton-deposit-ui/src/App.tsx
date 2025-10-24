@@ -222,7 +222,7 @@ export const App: React.FC = () => {
           }}
         >
           <Box sx={{ width: '100%', maxWidth: 840, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            {branding?.branding?.loginLogo}
+            {branding?.branding?.headerLogo}
             <Typography component="h1" variant="h4" sx={{ mt: 4, mb: 2 }}>
               USDC Deposits
             </Typography>
