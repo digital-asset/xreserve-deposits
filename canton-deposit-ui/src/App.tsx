@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { Buffer } from 'buffer';
 import { Contract, BrowserProvider, parseUnits, keccak256, Signer } from 'ethers';
-import { useAppKit, useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
+import { useAppKit, useAppKitAccount, useAppKitProvider, useAppKitNetwork, useDisconnect } from '@reown/appkit/react';
+import { mainnet, sepolia } from '@reown/appkit/networks';
 import {
   Box,
   Button,
@@ -14,7 +15,14 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Chip,
+  IconButton,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+  FormControl,
 } from '@mui/material';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import baseline from './themes/baseline';
@@ -23,14 +31,24 @@ import { DISCLAIMER_TEXT } from './constants/disclaimer';
 
 (window as any).Buffer = Buffer;
 
-const config = {
-  ETH_RPC_URL: (import.meta.env.VITE_ETH_RPC_URL as string),
-  ETHERSCAN_TX_PREFIX: (import.meta.env.VITE_ETHERSCAN_TX_PREFIX as string),
-  X_RESERVE_CONTRACT: (import.meta.env.VITE_X_RESERVE_CONTRACT as string),
-  ETH_USDC_CONTRACT: (import.meta.env.VITE_ETH_USDC_CONTRACT as string),
-  CANTON_DOMAIN: Number(import.meta.env.VITE_CANTON_DOMAIN ?? 10001),
-  MAX_FEE: (import.meta.env.VITE_MAX_FEE as string) ?? '0',
+// Network configurations
+const NETWORK_CONFIG = {
+  1: { // Mainnet
+    RPC_URL: import.meta.env.VITE_MAINNET_RPC_URL as string,
+    ETHERSCAN_TX_PREFIX: import.meta.env.VITE_MAINNET_ETHERSCAN_TX_PREFIX as string,
+    X_RESERVE_CONTRACT: import.meta.env.VITE_MAINNET_X_RESERVE_CONTRACT as string,
+    USDC_CONTRACT: import.meta.env.VITE_MAINNET_USDC_CONTRACT as string,
+  },
+  11155111: { // Sepolia
+    RPC_URL: import.meta.env.VITE_SEPOLIA_RPC_URL as string,
+    ETHERSCAN_TX_PREFIX: import.meta.env.VITE_SEPOLIA_ETHERSCAN_TX_PREFIX as string,
+    X_RESERVE_CONTRACT: import.meta.env.VITE_SEPOLIA_X_RESERVE_CONTRACT as string,
+    USDC_CONTRACT: import.meta.env.VITE_SEPOLIA_USDC_CONTRACT as string,
+  }
 };
+
+const CANTON_DOMAIN = Number(import.meta.env.VITE_CANTON_DOMAIN ?? 10001);
+const MAX_FEE = (import.meta.env.VITE_MAX_FEE as string) ?? '0';
 
 const X_RESERVE_ABI = [
   'function depositToRemote(uint256 value, uint32 remoteDomain, bytes32 remoteRecipient, address localToken, uint256 maxFee, bytes calldata hookData) external',
@@ -45,6 +63,8 @@ export const App: React.FC = () => {
   const { open } = useAppKit();
   const { address: connectedAddress, isConnected } = useAppKitAccount();
   const { walletProvider } = useAppKitProvider('eip155');
+  const { switchNetwork, caipNetwork } = useAppKitNetwork();
+  const { disconnect } = useDisconnect();
   
   const balancesLoaded = useRef(false);
   const [provider, setProvider] = useState<BrowserProvider | null>(null);
@@ -64,6 +84,21 @@ export const App: React.FC = () => {
   // Disclaimer modal state
   const [disclaimerOpen, setDisclaimerOpen] = useState<boolean>(false);
 
+  // Settings modal state
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
+  const [selectedNetwork, setSelectedNetwork] = useState<'mainnet' | 'sepolia'>('mainnet');
+
+  // Get current network config
+  const currentChainId = caipNetwork?.id ? Number(caipNetwork.id) : 1; // Default to mainnet
+  const config = NETWORK_CONFIG[currentChainId as keyof typeof NETWORK_CONFIG] || NETWORK_CONFIG[1];
+  const isMainnet = currentChainId === 1;
+  const networkName = isMainnet ? 'Eth Mainnet -> CN Mainnet' : 'Eth Sepolia -> CN Testnet';
+
+  // Sync selected network with current network
+  React.useEffect(() => {
+    setSelectedNetwork(isMainnet ? 'mainnet' : 'sepolia');
+  }, [isMainnet]);
+
   // Check if user has acknowledged disclaimer
   React.useEffect(() => {
     const acknowledged = localStorage.getItem('disclaimerAcknowledged');
@@ -75,6 +110,35 @@ export const App: React.FC = () => {
   const handleAcknowledgeDisclaimer = () => {
     localStorage.setItem('disclaimerAcknowledged', 'true');
     setDisclaimerOpen(false);
+  };
+
+  const handleSwitchNetwork = async () => {
+    try {
+      const targetNetwork = selectedNetwork === 'mainnet' ? mainnet : sepolia;
+      
+      // Disconnect wallet first if connected
+      if (isConnected && disconnect) {
+        await disconnect();
+        
+        // Clear local state
+        setProvider(null);
+        setSigner(null);
+        setAddress('');
+        setEthBalance('');
+        setUsdcBalance('');
+        setApproveHash(null);
+        setDepositHash(null);
+        balancesLoaded.current = false;
+        setStatus('Ready');
+      }
+      
+      // Switch network
+      await switchNetwork(targetNetwork);
+      
+      setSettingsOpen(false);
+    } catch (error) {
+      console.error('Error switching network:', error);
+    }
   };
 
   const updateStatus = (m: string) => {
@@ -121,7 +185,7 @@ export const App: React.FC = () => {
   const checkBalances = async (p: BrowserProvider, addr: string) => {
     if (!p) return;
     try {
-      const tokenContract = new Contract(config.ETH_USDC_CONTRACT, ERC20_ABI, p);
+      const tokenContract = new Contract(config.USDC_CONTRACT, ERC20_ABI, p);
       const nativeBalance = await p.getBalance(addr);
       setEthBalance((Number(nativeBalance) / 1e18).toFixed(6));
       const usdc = await tokenContract.balanceOf(addr);
@@ -173,8 +237,8 @@ export const App: React.FC = () => {
     setLoading(true);
     try {
       const xReserveContract = new Contract(config.X_RESERVE_CONTRACT, X_RESERVE_ABI, signer);
-      const tokenContract = new Contract(config.ETH_USDC_CONTRACT, ERC20_ABI, signer);
-      const maxFee = parseUnits(config.MAX_FEE, 6);
+      const tokenContract = new Contract(config.USDC_CONTRACT, ERC20_ABI, signer);
+      const maxFee = parseUnits(MAX_FEE, 6);
 
       const remoteRecipientBytes32 = keccak256(Buffer.from(recipientString, 'utf8'));
       const hookData = '0x' + Buffer.from(recipientString, 'utf8').toString('hex');
@@ -196,9 +260,9 @@ export const App: React.FC = () => {
       updateStatus('Approval successful! Please approve USDC deposit in your wallet...');
       const tx = await xReserveContract.depositToRemote(
         value,
-        config.CANTON_DOMAIN,
+        CANTON_DOMAIN,
         remoteRecipientBytes32,
-        config.ETH_USDC_CONTRACT,
+        config.USDC_CONTRACT,
         maxFee,
         hookData,
       );
@@ -260,6 +324,60 @@ export const App: React.FC = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Settings Dialog */}
+      <Dialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        aria-labelledby="settings-dialog-title"
+      >
+        <DialogTitle id="settings-dialog-title">
+          Network Settings
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Select the network for your deposits. Switching networks will disconnect your wallet.
+          </Typography>
+          <FormControl component="fieldset">
+            <RadioGroup
+              value={selectedNetwork}
+              onChange={(e) => setSelectedNetwork(e.target.value as 'mainnet' | 'sepolia')}
+            >
+              <FormControlLabel 
+                value="mainnet" 
+                control={<Radio />} 
+                label="Mainnet" 
+              />
+              <FormControlLabel 
+                value="sepolia" 
+                control={<Radio />} 
+                label="Testnet" 
+              />
+            </RadioGroup>
+          </FormControl>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setSettingsOpen(false)}
+            sx={{ textTransform: 'none' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSwitchNetwork}
+            variant="contained"
+            disabled={selectedNetwork === (isMainnet ? 'mainnet' : 'sepolia')}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Switch Network
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Container
         maxWidth="xl"
         sx={{
@@ -270,9 +388,27 @@ export const App: React.FC = () => {
           minHeight: '100vh',
           height: '90vh',
           pt: 15,
+          position: 'relative',
         }}
         id="app"
       >
+        {/* Settings Button - Top Right */}
+        <IconButton
+          onClick={() => setSettingsOpen(true)}
+          sx={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            color: 'text.secondary',
+            '&:hover': {
+              color: 'primary.main',
+            },
+          }}
+          aria-label="settings"
+        >
+          <SettingsIcon />
+        </IconButton>
+
         <Container
           maxWidth="lg"
           sx={{
@@ -288,9 +424,17 @@ export const App: React.FC = () => {
         >
           <Box sx={{ width: '100%', maxWidth: 840, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             {branding?.branding?.headerLogo}
-            <Typography component="h1" variant="h4" sx={{ mt: 4, mb: 2 }}>
+            <Typography component="h1" variant="h4" sx={{ mt: 4, mb: 1 }}>
               USDC Deposits
             </Typography>
+
+            {/* Network Indicator */}
+            <Chip 
+              label={networkName}
+              color={isMainnet ? 'primary' : 'warning'}
+              size="small"
+              sx={{ mb: 2 }}
+            />
 
             {!address ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2, width: '100%' }}>

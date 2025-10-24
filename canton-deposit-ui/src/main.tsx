@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { createAppKit } from '@reown/appkit/react'
 import { EthersAdapter } from '@reown/appkit-adapter-ethers'
-import { mainnet } from '@reown/appkit/networks'
+import { mainnet, sepolia } from '@reown/appkit/networks'
 import { App } from './App';
 import { BrandingProvider } from './contexts/BrandingProvider';
 
@@ -11,7 +11,8 @@ const ethersAdapter = new EthersAdapter()
 
 createAppKit({
   adapters: [ethersAdapter],
-  networks: [mainnet],
+  networks: [mainnet, sepolia],
+  defaultNetwork: mainnet,
   metadata: {
     name: 'Canton Deposits',
     description: 'USDC Deposits to Canton Network via xReserve',
