@@ -16,7 +16,9 @@ createAppKit({
   metadata: {
     name: 'Canton Deposits',
     description: 'USDC Deposits to Canton Network via xReserve',
-    url: typeof window !== 'undefined' ? window.location.origin : '',
+    url: typeof window !== 'undefined'
+      ? new URL(import.meta.env.BASE_URL || '/', window.location.origin).toString()
+      : '',
     icons: ['https://avatars.githubusercontent.com/u/179229932']
   },
   projectId,
