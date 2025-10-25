@@ -23,6 +23,7 @@ import {
   FormControl,
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import baseline from './themes/baseline';
@@ -83,6 +84,8 @@ export const App: React.FC = () => {
 
   // Disclaimer modal state
   const [disclaimerOpen, setDisclaimerOpen] = useState<boolean>(false);
+  // Track if disclaimer has been acknowledged
+  const [hasAcknowledged, setHasAcknowledged] = useState<boolean>(false);
 
   // Settings modal state
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
@@ -101,7 +104,8 @@ export const App: React.FC = () => {
 
   // Check if user has acknowledged disclaimer
   React.useEffect(() => {
-    const acknowledged = localStorage.getItem('disclaimerAcknowledged');
+    const acknowledged = !!localStorage.getItem('disclaimerAcknowledged');
+    setHasAcknowledged(acknowledged);
     if (!acknowledged) {
       setDisclaimerOpen(true);
     }
@@ -109,6 +113,7 @@ export const App: React.FC = () => {
 
   const handleAcknowledgeDisclaimer = () => {
     localStorage.setItem('disclaimerAcknowledged', 'true');
+    setHasAcknowledged(true);
     setDisclaimerOpen(false);
   };
 
@@ -324,7 +329,6 @@ export const App: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Settings Dialog */}
       <Dialog
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
@@ -392,7 +396,6 @@ export const App: React.FC = () => {
         }}
         id="app"
       >
-        {/* Settings Button - Top Right */}
         <IconButton
           onClick={() => setSettingsOpen(true)}
           sx={{
@@ -440,7 +443,7 @@ export const App: React.FC = () => {
               <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2, width: '100%' }}>
                 <Button
                   onClick={connectWallet}
-                  disabled={loading}
+                  disabled={loading || !hasAcknowledged}
                   fullWidth
                   sx={(t) => ({
                     mt: 1.5,
@@ -458,6 +461,11 @@ export const App: React.FC = () => {
                 >
                   {loading ? <CircularProgress size={18} color="inherit" /> : 'Connect Wallet'}
                 </Button>
+                {!hasAcknowledged && (
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                    Please acknowledge the Terms and Conditions to enable wallet connection.
+                  </Typography>
+                )}
               </Box>
             ) : (
               <Box sx={{ mb: 2, textAlign: 'center', width: '100%' }}>
@@ -539,20 +547,25 @@ export const App: React.FC = () => {
             </Box>
 
             <Box sx={{ mt: 4, mb: 2 }}>
-              <Link
-                component="button"
-                variant="body2"
-                onClick={() => setDisclaimerOpen(true)}
-                sx={{
-                  color: 'text.secondary',
-                  textDecoration: 'none',
-                  '&:hover': {
-                    textDecoration: 'underline',
-                  },
-                }}
-              >
-                Terms and Conditions
-              </Link>
+              <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                <Link
+                  component="button"
+                  variant="body2"
+                  onClick={() => setDisclaimerOpen(true)}
+                  sx={{
+                    color: 'text.secondary',
+                    textDecoration: 'none',
+                    '&:hover': {
+                      textDecoration: 'underline',
+                    },
+                  }}
+                >
+                  Terms and Conditions
+                </Link>
+                {hasAcknowledged && (
+                  <CheckCircleOutlineIcon sx={{ color: 'success.main', fontSize: 14 }} />
+                )}
+              </Box>
             </Box>
           </Box>
         </Container>
