@@ -57,6 +57,7 @@ const X_RESERVE_ABI = [
 const ERC20_ABI = [
   'function approve(address spender, uint256 amount) external returns (bool)',
   'function balanceOf(address account) external view returns (uint256)',
+  'function allowance(address owner, address spender) external view returns (uint256)',
 ];
 
 export const App: React.FC = () => {
@@ -244,25 +245,35 @@ export const App: React.FC = () => {
       const xReserveContract = new Contract(config.X_RESERVE_CONTRACT, X_RESERVE_ABI, signer);
       const tokenContract = new Contract(config.USDC_CONTRACT, ERC20_ABI, signer);
       const maxFee = parseUnits(MAX_FEE, 6);
+      const signerAddress = await signer.getAddress();
 
       const remoteRecipientBytes32 = keccak256(Buffer.from(recipientString, 'utf8'));
       const hookData = '0x' + Buffer.from(recipientString, 'utf8').toString('hex');
 
+      // Check USDC balance
       updateStatus('Checking USDC balance...');
-      const usdcBal = await tokenContract.balanceOf(await signer.getAddress());
+      const usdcBal = await tokenContract.balanceOf(signerAddress);
       if (usdcBal < value) {
         updateStatus('❌ Error: Insufficient USDC balance.');
         setLoading(false);
         return;
       }
 
-      updateStatus('Please approve USDC spending in your wallet...');
-      const approveTx = await tokenContract.approve(config.X_RESERVE_CONTRACT, value);
-      setApproveHash(approveTx.hash);
-      updateStatus(`Approval transaction sent: ${approveTx.hash}`);
-      await approveTx.wait();
+      // Check existing allowance
+      const currentAllowance = await tokenContract.allowance(signerAddress, config.X_RESERVE_CONTRACT);
+      
+      if (currentAllowance < value) {
+        updateStatus('Please approve USDC spending in your wallet...');
+        const approveTx = await tokenContract.approve(config.X_RESERVE_CONTRACT, value);
+        setApproveHash(approveTx.hash);
+        updateStatus(`Approval transaction sent: ${approveTx.hash}`);
+        await approveTx.wait();
+        updateStatus('Approval confirmed! Proceeding to deposit...');
+      } else {
+        updateStatus('USDC already approved, proceeding to deposit...');
+      }
 
-      updateStatus('Approval successful! Please approve USDC deposit in your wallet...');
+      updateStatus('Please approve the deposit transaction in your wallet...');
       const tx = await xReserveContract.depositToRemote(
         value,
         CANTON_DOMAIN,
