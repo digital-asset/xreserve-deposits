@@ -9,7 +9,6 @@ import { BrandingProvider } from './contexts/BrandingProvider';
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string;
 const ethersAdapter = new EthersAdapter()
 
-// Override network RPC URLs to avoid WalletConnect relay errors
 const mainnetWithRpc = {
   ...mainnet,
   rpcUrls: {
@@ -50,6 +49,8 @@ createAppKit({
   projectId,
   features: {
     analytics: false,
+    socials: false,
+    email: false,
   }
 })
 
