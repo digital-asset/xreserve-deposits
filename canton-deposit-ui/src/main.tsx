@@ -9,10 +9,29 @@ import { BrandingProvider } from './contexts/BrandingProvider';
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string;
 const ethersAdapter = new EthersAdapter()
 
+// Override network RPC URLs to avoid WalletConnect relay errors
+const mainnetWithRpc = {
+  ...mainnet,
+  rpcUrls: {
+    default: {
+      http: [import.meta.env.VITE_MAINNET_RPC_URL as string],
+    },
+  },
+};
+
+const sepoliaWithRpc = {
+  ...sepolia,
+  rpcUrls: {
+    default: {
+      http: [import.meta.env.VITE_SEPOLIA_RPC_URL as string],
+    },
+  },
+};
+
 createAppKit({
   adapters: [ethersAdapter],
-  networks: [mainnet, sepolia],
-  defaultNetwork: mainnet,
+  networks: [mainnetWithRpc, sepoliaWithRpc],
+  defaultNetwork: mainnetWithRpc,
   metadata: {
     name: 'Canton Deposits',
     description: 'USDC Deposits to Canton Network via xReserve',
