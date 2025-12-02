@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Buffer } from 'buffer';
-import { Contract, BrowserProvider, parseUnits, keccak256, Signer } from 'ethers';
+import { Contract, BrowserProvider, parseUnits, keccak256, Signer, formatEther, formatUnits } from 'ethers';
 import { useAppKit, useAppKitAccount, useAppKitProvider, useAppKitNetwork, useDisconnect } from '@reown/appkit/react';
 import { mainnet, sepolia } from '@reown/appkit/networks';
 import {
@@ -193,9 +193,9 @@ export const App: React.FC = () => {
     try {
       const tokenContract = new Contract(config.USDC_CONTRACT, ERC20_ABI, p);
       const nativeBalance = await p.getBalance(addr);
-      setEthBalance((Number(nativeBalance) / 1e18).toFixed(6));
+      setEthBalance(parseFloat(formatEther(nativeBalance)).toFixed(6));
       const usdc = await tokenContract.balanceOf(addr);
-      setUsdcBalance((Number(usdc) / 1e6).toFixed(6));
+      setUsdcBalance(parseFloat(formatUnits(usdc, 6)).toFixed(6));
       if (!balancesLoaded.current) {
         updateStatus('Balances loaded.')
         balancesLoaded.current = true;
