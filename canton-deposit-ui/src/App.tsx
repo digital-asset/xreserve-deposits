@@ -485,7 +485,7 @@ export const App: React.FC = () => {
                 </Typography>
                 <Typography variant="body2" sx={{ mb: 1 }}>ETH: {ethBalance} • USDC: {usdcBalance}</Typography>
                 <Button
-                  onClick={() => open()}
+                  onClick={() => disconnect()}
                   variant="outlined"
                   size="small"
                   sx={{
