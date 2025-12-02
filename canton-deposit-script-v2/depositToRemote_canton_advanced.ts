@@ -186,6 +186,8 @@ async function signTransaction(unsignedTx: TransactionRequest): Promise<string> 
     // Replace this block with your preferred signing method:
     
     // Example: Using private key (simplest method)
+    // NOTE if using this method it is recommended to derive the public address from here and not from 
+    // a configuration file, to ensure the private key matches the expected signer address.
     const wallet = new Wallet(config.SIGNER_PRIVATE_KEY);
     const signature = wallet.signingKey.sign(unsignedTxHash);
     
