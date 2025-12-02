@@ -92,11 +92,15 @@ export const App: React.FC = () => {
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
   const [selectedNetwork, setSelectedNetwork] = useState<'mainnet' | 'sepolia'>('mainnet');
 
+  // Confirmation dialog state
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState<boolean>(false);
+
   // Get current network config
   const currentChainId = caipNetwork?.id ? Number(caipNetwork.id) : 1; // Default to mainnet
   const config = NETWORK_CONFIG[currentChainId as keyof typeof NETWORK_CONFIG] || NETWORK_CONFIG[1];
   const isMainnet = currentChainId === 1;
   const networkName = isMainnet ? 'Eth Mainnet -> CN Mainnet' : 'Eth Sepolia -> CN Testnet';
+  const networkNameShort = isMainnet ? 'Mainnet' : 'Testnet';
 
   // Sync selected network with current network
   React.useEffect(() => {
@@ -208,9 +212,7 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleDeposit = async () => {
-    setApproveHash(null);
-    setDepositHash(null);
+  const handleDepositClick = () => {
     if (!signer || !provider) {
       updateStatus('❌ Error: Wallet not connected.');
       return;
@@ -237,6 +239,36 @@ export const App: React.FC = () => {
     const recipientString = recipient.trim();
     if (!recipientString) {
       updateStatus('❌ Error: Please enter a Canton recipient address.');
+      return;
+    }
+
+    // Validate Canton party ID format: partyId::namespace
+    const partyIdRegex = /^[a-zA-Z0-9_-]+::[a-zA-Z0-9_-]+$/;
+    if (!partyIdRegex.test(recipientString)) {
+      updateStatus('❌ Error: Invalid Canton party ID format. Expected format: partyId::namespace');
+      return;
+    }
+
+    // Show confirmation dialog
+    setConfirmDialogOpen(true);
+  };
+
+  const handleDepositConfirm = async () => {
+    setConfirmDialogOpen(false);
+    setApproveHash(null);
+    setDepositHash(null);
+
+    if (!signer || !provider) {
+      updateStatus('❌ Error: Wallet not connected.');
+      return;
+    }
+
+    const recipientString = recipient.trim();
+    let value: bigint;
+    try {
+      value = parseUnits(amount, 6);
+    } catch {
+      updateStatus('❌ Error: Invalid amount.');
       return;
     }
 
@@ -336,6 +368,76 @@ export const App: React.FC = () => {
             }}
           >
             I Acknowledge
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={confirmDialogOpen}
+        onClose={() => setConfirmDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        aria-labelledby="confirm-dialog-title"
+      >
+        <DialogTitle id="confirm-dialog-title">
+          Confirm Deposit
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2" sx={{ mb: 2, fontWeight: 600 }}>
+              Please review your deposit details:
+            </Typography>
+            <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1, mb: 2 }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>Amount:</strong> {amount} USDC
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>Network:</strong> {networkNameShort}
+              </Typography>
+              <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                <strong>Canton Recipient:</strong> {recipient}
+              </Typography>
+            </Box>
+            <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1, mb: 2 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                Important Warning
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                The recipient party ID must have been onboarded onto the xReserve application on Canton Network before initiating this deposit. Deposits to non-onboarded recipients may result in delayed or lost of funds.
+              </Typography>
+            </Box>
+            <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                What happens next?
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontSize: '0.875rem' }}>
+                1. Circle's attestation service will generate an attestation for your deposit on Ethereum after block finality (approx. 15 minutes)
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontSize: '0.875rem' }}>
+                2. Once attested, the deposit will reflect on Canton Network and can be minted by the recipient party
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                Expected time: 15-20 minutes depending on network conditions
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setConfirmDialogOpen(false)}
+            sx={{ textTransform: 'none' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDepositConfirm}
+            variant="contained"
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Confirm & Deposit
           </Button>
         </DialogActions>
       </Dialog>
@@ -518,7 +620,7 @@ export const App: React.FC = () => {
                 sx={{ maxWidth: 800, mx: 'auto'  }}
               />
               <Button
-                onClick={handleDeposit}
+                onClick={handleDepositClick}
                 disabled={loading || !address}
                 fullWidth
                 sx={(t) => ({
