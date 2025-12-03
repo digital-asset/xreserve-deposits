@@ -400,10 +400,22 @@ export const App: React.FC = () => {
             </Box>
             <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1, mb: 2 }}>
               <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                Important Warning
+                ⚠️ WARNING: Verify Bridge Support Before Depositing
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 1 }}>
+                You are performing a cross-chain bridge, not a standard transfer.
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 1 }}>
+                While many wallets can hold and transfer USDC xReserve on Canton, most do not yet support bridging deposits from/to Ethereum.
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+                • <strong>Do not assume support:</strong> Supporting USDCx does not necessarily mean the wallet can also accept incoming bridged transactions.
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 1 }}>
+                • <strong>Verify Recipient:</strong> Ensure the wallet to which you're sending specifically supports USDC xReserve bridging.
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
-                The recipient party ID must have been onboarded onto the xReserve application on Canton Network before initiating this deposit. Deposits to non-onboarded recipients may result in delayed or lost of funds.
+                Failure to verify this specific capability may result in the temporary or permanent loss of funds.
               </Typography>
             </Box>
             <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
