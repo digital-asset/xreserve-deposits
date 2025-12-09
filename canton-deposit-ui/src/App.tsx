@@ -243,9 +243,21 @@ export const App: React.FC = () => {
     }
 
     // Validate Canton party ID format: partyId::namespace
-    const partyIdRegex = /^[a-zA-Z0-9_-]+::[a-zA-Z0-9_-]+$/;
-    if (!partyIdRegex.test(recipientString)) {
+    const parts = recipientString.split('::');
+    if (parts.length !== 2) {
       updateStatus('❌ Error: Invalid Canton party ID format. Expected format: partyId::namespace');
+      return;
+    }
+
+    const namespace = parts[1];
+    
+    // Validate namespace (fingerprint): must be 68 characters and start with "12" or "1220"
+    if (namespace.length !== 68) {
+      updateStatus('❌ Error: Invalid namespace length. Expected 68 characters.');
+      return;
+    }
+    if (!namespace.startsWith('12')) {
+      updateStatus('❌ Error: Invalid namespace format. Must start with "12".');
       return;
     }
 
